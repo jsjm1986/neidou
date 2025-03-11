@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>组织关系分析系统</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- 引入G6图表库 -->
+    <script src="https://gw.alipayobjects.com/os/lib/antv/g6/4.8.24/dist/g6.min.js"></script>
+    <!-- 引入Mermaid图表库 -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <!-- 引入Chart.js图表库 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- 引入marked库 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        #eventPreviewContainer {
+            margin-top: 15px;
+            margin-bottom: 20px;
+        }
+        
+        #eventPreview {
+            width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 10px;
+            font-size: 14px;
+            line-height: 1.5;
+            transition: border-color 0.15s ease-in-out;
+        }
+        
+        #eventPreview:focus {
+            border-color: #80bdff;
+            outline: 0;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+
+        /* 验证码弹窗样式 */
+        #verificationOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        #verificationBox {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        #verificationBox h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        #verificationBox input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        #verificationBox button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+
+        #verificationBox button:hover {
+            background-color: #0056b3;
+        }
+
+        #verificationError {
+            color: red;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- 验证码弹窗 -->
+    <div id="verificationOverlay">
+        <div id="verificationBox">
+            <h2>请输入验证码</h2>
+            <input type="text" id="verificationCode" placeholder="请输入验证码">
+            <div id="verificationError">验证码错误，请重试</div>
+            <button onclick="verifyCode()">确认</button>
+        </div>
+    </div>
+
+    <nav class="navbar">
+        <div class="nav-brand">组织政治AI系统</div>
+        <ul class="nav-menu">
+            <li class="nav-item dropdown">
+                <a href="#" class="nav-link">数据管理</a>
+                <div class="dropdown-menu">
+                    <a href="#" onclick="showForm('person')">人物管理</a>
+                    <a href="#" onclick="showForm('organization')">组织管理</a>
+                    <a href="#" onclick="showForm('business')">公司业务</a>
+                    <a href="#" onclick="showForm('event')">事件管理</a>
+                </div>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="showDashboard()">可视化看板</a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="showPoliticsAnalyzer()">政治分析器</a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="showAIChat()">AI咨询</a>
+            </li>
+        </ul>
+    </nav>
+
+    <main class="main-content" style="position: relative;">
+        <!-- 表单区域 -->
+        <div id="formSection" class="section">
+            <!-- 人物管理 -->
+            <div id="personForm" class="form-container" style="display: none;">
+                <div class="section-header">
+                    <h2>人物管理</h2>
+                    <div class="header-controls">
+                        <div class="search-box">
+                            <i class="search-icon">🔍</i>
+                            <input type="text" id="personSearch" placeholder="搜索人物..." class="search-input">
+                        </div>
+                        <button class="btn-primary" onclick="showPersonModal()">
+                            <i class="add-icon">+</i>添加人物
+                        </button>
+                    </div>
+                </div>
+
+                <div class="data-table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th class="col-name">姓名</th>
+                                <th class="col-dept">部门</th>
+                                <th class="col-position">职位</th>
+                                <th class="col-power">权力描述</th>
+                                <th class="col-relation">关系描述</th>
+                                <th class="col-actions">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="personTableBody">
+                            <!-- 动态填充数据 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 组织管理 -->
+            <div id="organizationForm" class="form-container" style="display: none;">
+                <div class="section-header">
+                    <h2>组织管理</h2>
+                    <div class="header-controls">
+                        <div class="search-box">
+                            <i class="search-icon">🔍</i>
+                            <input type="text" id="organizationSearch" placeholder="搜索组织..." class="search-input">
+                        </div>
+                        <button class="btn-primary" onclick="showOrganizationModal()">
+                            <i class="add-icon">+</i>添加组织
+                        </button>
+                    </div>
+                </div>
+
+                <div class="data-table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th class="col-name">组织名称</th>
+                                <th class="col-type">组织类型</th>
+                                <th class="col-parent">上级组织</th>
+                                <th class="col-desc">描述</th>
+                                <th class="col-actions">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="organizationTableBody">
+                            <!-- 动态填充数据 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 公司业务管理 -->
+            <div id="businessForm" class="form-container" style="display: none;">
+                <div class="section-header">
+                    <h2>公司业务描述</h2>
+                    <div class="header-controls">
+                        <div class="search-box">
+                            <i class="search-icon">🔍</i>
+                            <input type="text" id="businessSearch" placeholder="搜索业务..." class="search-input">
+                        </div>
+                        <button class="btn-primary" onclick="showBusinessModal()">
+                            <i class="add-icon">+</i>添加业务
+                        </button>
+                    </div>
+                </div>
+
+                <div class="data-table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th class="col-name">业务名称</th>
+                                <th class="col-type">业务类型</th>
+                                <th class="col-dept">负责部门</th>
+                                <th class="col-desc">业务描述</th>
+                                <th class="col-status">状态</th>
+                                <th class="col-actions">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="businessTableBody">
+                            <!-- 动态填充数据 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 事件管理 -->
+            <div id="eventForm" class="form-container" style="display: none;">
+                <div class="section-header">
+                    <h2>事件管理</h2>
+                    <div class="header-controls">
+                        <div class="search-box">
+                            <i class="search-icon">🔍</i>
+                            <input type="text" id="eventSearch" placeholder="搜索事件..." class="search-input">
+                        </div>
+                        <button class="btn-primary" onclick="showEventModal()">
+                            <i class="add-icon">+</i>添加事件
+                        </button>
+                    </div>
+                </div>
+
+                <div class="data-table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th class="col-title">事件标题</th>
+                                <th class="col-desc">描述</th>
+                                <th class="col-start">开始时间</th>
+                                <th class="col-end">结束时间</th>
+                                <th class="col-people">相关人员</th>
+                                <th class="col-actions">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="eventTableBody">
+                            <!-- 动态填充数据 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 可视化看板区域 -->
+        <div id="dashboardSection" class="section" style="display: none;">
+            <div class="dashboard-container">
+                <!-- 顶部统计卡片 -->
+                <div class="stat-cards">
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="totalPeople">0</div>
+                            <div class="stat-label">总人数</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🏢</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="totalOrgs">0</div>
+                            <div class="stat-label">组织数量</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="totalBusiness">0</div>
+                            <div class="stat-label">业务数量</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📅</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="totalEvents">0</div>
+                            <div class="stat-label">事件数量</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 事件时间线（长条） -->
+                <div class="chart-wrapper full-width">
+                    <div class="chart-header">
+                        <h3>事件时间线</h3>
+                        <div class="chart-actions">
+                            <button class="btn-chart-action" onclick="generateEventTimeline()">
+                                <span class="action-icon">🔄</span>
+                                <span class="action-text">更新数据</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="eventTimeline" class="chart-content"></div>
+                </div>
+
+                <!-- 下方两个图表 -->
+                <div class="charts-row">
+                    <div class="chart-wrapper">
+                        <div class="chart-header">
+                            <h3>组织关系网络图</h3>
+                            <div class="chart-actions">
+                                <button class="btn-chart-action" onclick="generateRelationshipGraph()">
+                                    <span class="action-icon">🔄</span>
+                                    <span class="action-text">更新数据</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="relationshipGraph" class="chart-content"></div>
+                    </div>
+                    <div class="chart-wrapper">
+                        <div class="chart-header">
+                            <h3>人物影响力排名</h3>
+                            <div class="chart-actions">
+                                <button class="btn-chart-action" onclick="generateInfluenceChart()">
+                                    <span class="action-icon">🔄</span>
+                                    <span class="action-text">更新数据</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="influenceChart" class="chart-content"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 政治分析器区域 -->
+        <div id="politicsAnalyzerSection" class="section" style="display: none;">
+            <div class="analyzer-container">
+                <div class="analyzer-header">
+                    <h2>政治分析器</h2>
+                    <div class="analyzer-controls">
+                        <button class="btn-analyze" onclick="startAnalysis()">
+                            <span class="action-icon">🔄</span>
+                            <span class="action-text">开始分析</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 选择区域 -->
+                <div class="selection-area">
+                    <div class="selection-row">
+                        <div class="event-selector">
+                            <h3>选择事件（按住Ctrl键多选）</h3>
+                            <div id="eventsList" class="selection-list">
+                                <!-- 动态填充事件列表 -->
+                            </div>
+                            
+                            <!-- 添加事件预览区域 -->
+                            <div id="eventPreviewContainer" class="event-preview-container" style="display: none;">
+                                <h3>事件内容预览</h3>
+                                <textarea id="eventPreview" class="event-preview-textarea"></textarea>
+                            </div>
+                        </div>
+                        <div class="person-selector">
+                            <h3>选择角色</h3>
+                            <div id="peopleList" class="selection-list">
+                                <!-- 动态填充人物列表 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 分析图表区域 -->
+                <div class="charts-row">
+                    <!-- 动机分析图 -->
+                    <div class="chart-wrapper">
+                        <div class="chart-header">
+                            <h3>动机分析</h3>
+                        </div>
+                        <div id="motivationChart" class="mermaid-chart"></div>
+                    </div>
+                    
+                    <!-- 权术手段分析图 -->
+                    <div class="chart-wrapper">
+                        <div class="chart-header">
+                            <h3>权术手段分析</h3>
+                        </div>
+                        <div id="tacticsChart" class="mermaid-chart"></div>
+                    </div>
+                </div>
+
+                <!-- 影响分析图（长条） -->
+                <div class="chart-wrapper full-width">
+                    <div class="chart-header">
+                        <h3>影响分析</h3>
+                    </div>
+                    <div id="impactChart" class="mermaid-chart"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI咨询区域 -->
+        <div id="aiChatSection" class="section" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
+            <div class="analyzer-container" style="height: 100%; padding: 0;">
+                <div id="aiChatContent" style="height: 100%;">
+                    <!-- iframe 将在这里动态添加 -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 模态框 -->
+    <div id="modalOverlay" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">添加事件</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- 动态插入表单内容 -->
+            </div>
+        </div>
+    </div>
+
+    <script src="js/store.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html> 
