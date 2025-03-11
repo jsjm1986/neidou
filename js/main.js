@@ -1,7 +1,7 @@
 // 修改 API 配置，确保可以被其他文件访问
 window.apiConfig = {
     url: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-    apiKey: "sk-2e00e62e3a904a5cb639742cd3adfe57",
+    apiKey: "your api key",
     model: "qwen-max-2025-01-25",
     stream: false,
     max_tokens: 4000,
